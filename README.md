@@ -18,7 +18,9 @@ There are precompiled binaries for both broadcaster and receiver.
 3. Install VScode with default settings
     - Recommended to install Microsoft C/C++ extensions for debugging and IntelliSense
 4. Download or install the `udp-vocoder` project
+
 **The following step is neccessary every time if you want to compile the code**
+
 5. Go to the start menu and search up "Developer Command Prompt for VS2022" or (if you install a new version of it VS202X) 
 6. Use `cd [path]` in the terminal to your project folder.
 7. Use `code .` to open up VScode. 
