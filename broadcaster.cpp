@@ -16,7 +16,9 @@
 
 using namespace std;
 
-#define MYPORT 9009    // the port users will be connecting to
+#define MYPORT 9009     // the port users will be connecting to
+#define WRITE_FILE 0    // Change to 1 if you want to write the opus file (read and write can't be on the same time)
+#define READ_FILE 1     // Change to 1 if you want to read from opus file
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -29,10 +31,9 @@ struct Packet
 };
 
 
-
 int main()
 {
-    /* Setting up variables for socket*/
+    /* SOCKET SECTION */
     WSADATA wsaData;
     WSAStartup( MAKEWORD( 2, 2 ), &wsaData );
     SOCKET sock;
@@ -53,6 +54,8 @@ int main()
     Recv_addr.sin_port         = htons( MYPORT );
     Recv_addr.sin_addr.s_addr =   INADDR_BROADCAST;
 
+    /* END OF SOCKET SECTION */
+
 
     // Init portaudio
 	PaError paErr = Pa_Initialize();
@@ -68,21 +71,39 @@ int main()
 	if (opusErr != OPUS_OK)
 		throw std::runtime_error(string("opus_encoder_create error: ") + opus_strerror(opusErr));
 
-
-    // ifstream audio_file;
-    // audio_file.open("packets.opus", ios::binary);
-
-    //uint8_t sendMSG[25];
-
     beginAudioStream(true, false);
 
+#if READ_FILE
+
+    ifstream audio_file;
+    audio_file.open("packets.opus", ios::binary);
+    uint8_t sendMSG[25];
+       
+    while(audio_file)
+    {
+        Packet pack;
+        audio_file.read((char*)&pack.datasize, 1);
+        audio_file.read((char*)pack.data, pack.datasize);
+
+
+        cout << "sending message: "; 
+        //audio_file.read((char*)sendMSG, 20);
+
+        cout << "size: " << int(pack.datasize) << " Packet: "; 
+        for(int i = 0; i < pack.datasize ; i++)
+        {
+            cout << (int)pack.data[i] << " ";
+
+        }
+        cout << endl;
+        sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
+    }
+
+
+#else
 
     while(1)
     {
-        // char signal;
-        // cin >> signal;
-        // if(signal == 'x') {break;}
-
         if(Pa_GetStreamReadAvailable(stream) >= PACKET_SAMPLES)
         {
             opus_int16 microphone[PACKET_SAMPLES];
@@ -110,30 +131,11 @@ int main()
 
             sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
         }
-
-        
-
-        //audio_file.read((char*)&pack.datasize, 1);
-        //audio_file.read((char*)pack.data, pack.datasize);
-
-
-        // cout << "sending message: "; 
-        // //audio_file.read((char*)sendMSG, 20);
-
-        // cout << "size: " << int(pack.datasize) << " Packet: "; 
-        // for(int i = 0; i < pack.datasize ; i++)
-        // {
-        //     cout << (int)pack.data[i] << " ";
-
-        // }
-        // cout << endl;
-        // sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
- 
-        
     }
+ #endif
+        
 
     endAudioStream();
-
     closesocket( sock );
     WSACleanup();
 }

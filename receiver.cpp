@@ -12,8 +12,11 @@
 #include <conio.h>
 #include <deque>
 #include <thread>
-
 #include "audio.cpp"
+
+#include <time.h>
+struct timeval timeout={2,0}; //set timeout for 2 seconds/* set receive UDP message timeout */
+
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -86,6 +89,7 @@ void packetMaker()
         if (bytebuf.size() < 2){    // would make a new thread every time, make a timeout
             thread p(byteToQueue);
             p.join();
+            continue;
         }
 
 		uint8_t last = bytebuf.front();
@@ -176,7 +180,8 @@ int main()
     //  This option is needed on the socket in order to be able to receive broadcast messages
     //  If not set the receiver will not receive broadcast messages in the local network.
     // SO_RECVTIME value to set a timeout for the socket
-    if ( setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) ) < 0 )
+    // if ( setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) ) < 0 )
+    if (setsockopt( sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,sizeof(struct timeval)) < 0)
     {
         cout<<"Error in setting Broadcast option";
         closesocket(sock);
