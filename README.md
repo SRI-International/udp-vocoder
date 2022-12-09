@@ -15,7 +15,7 @@ There are precompiled binaries for both broadcaster and receiver.
 
 1. Install [Microsoft Build Tools](https://aka.ms/vs/17/release/vs_BuildTools.exe)
 2. Once installed, check off "Desktop development with C++" 
-3. Install VScode with default settings
+3. Install [VScode](https://code.visualstudio.com/download) with default settings
     - Recommended to install Microsoft C/C++ extensions for debugging and IntelliSense
 4. Download or install the `udp-vocoder` project
 
