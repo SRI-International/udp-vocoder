@@ -9,7 +9,7 @@
 
 #include "winsock2.h"
 #include <iostream>
-//#include <conio.h>
+#include <conio.h>
 #include <deque>
 #include <thread>
 
@@ -49,24 +49,28 @@ PacketBuffer packetbuf;
 
 
 /* Wait to receive data and push to byte buffer */
-void bufToQueue()
+void byteToQueue()
 {
-    int ret = 0;
-    while(ret < 1) 
+
+    int ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
+
+    if (ret > 0) // If the ret returns -1 or 0, don't push anyting to the queue;
     {
-        ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
+        for(int i = 0; i < ret; i++)
+        {
+            bytebuf.push_back(recvbuff[i]);
+        }
+    }else
+    {
+        //error message
     }
 
-    for(int i = 0; i < ret; i++)
-    {
-        bytebuf.push_back(recvbuff[i]);
-    }
+    
 }
-
 
 /* 
     If there is data in the queue, pick up pattern and create new packet, 
-    then add it to the packet queue. 
+    then add it to the packet queue.
 */
 void packetMaker()
 {
@@ -79,8 +83,8 @@ void packetMaker()
 
     while(1)
 	{
-        if (bytebuf.size() < 2){
-            thread p(bufToQueue);
+        if (bytebuf.size() < 2){    // would make a new thread every time, make a timeout
+            thread p(byteToQueue);
             p.join();
         }
 
@@ -160,13 +164,18 @@ void playRecvAudio()
 
 int main()
 {
+    /* This section is to set up the socket */
+
     WSADATA wsaData;
     WSAStartup( MAKEWORD( 2, 2 ), &wsaData );
     
     sock = socket( AF_INET, SOCK_DGRAM, 0 );
+    
     char broadcast = '1';
-//  This option is needed on the socket in order to be able to receive broadcast messages
-//  If not set the receiver will not receive broadcast messages in the local network.
+
+    //  This option is needed on the socket in order to be able to receive broadcast messages
+    //  If not set the receiver will not receive broadcast messages in the local network.
+    // SO_RECVTIME value to set a timeout for the socket
     if ( setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) ) < 0 )
     {
         cout<<"Error in setting Broadcast option";
@@ -174,21 +183,21 @@ int main()
         return 0;
     }
 
-    /* Setting up socket variables */
     Recv_addr.sin_family       = AF_INET;
     Recv_addr.sin_port         = htons( MYPORT );
     Recv_addr.sin_addr.s_addr  = INADDR_ANY;
-    // Recv_addr.sin_addr.s_addr  = inet_addr(LOCAL_IP_ADDRESS);
 
     if ( bind( sock, (sockaddr*) &Recv_addr, sizeof (Recv_addr) ) < 0 )
     {
         cout << "Error in BINDING" << WSAGetLastError();
-       //_getch();
+       _getch();
         closesocket(sock);
         return 0;
     }
 
-    // Init portaudio
+    /* Socket Section Ends */
+
+    // Init portaudio will print out a lot of meta data
 	PaError paErr = Pa_Initialize();
 	if (paErr)
 		throw std::runtime_error(string("Could not start audio. Pa_Initialize error: ") + Pa_GetErrorText(paErr));

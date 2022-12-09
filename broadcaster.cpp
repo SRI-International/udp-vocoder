@@ -32,6 +32,7 @@ struct Packet
 
 int main()
 {
+    /* Setting up variables for socket*/
     WSADATA wsaData;
     WSAStartup( MAKEWORD( 2, 2 ), &wsaData );
     SOCKET sock;
@@ -61,17 +62,17 @@ int main()
 
     cout << "Sound in : " << Pa_GetDeviceInfo( Pa_GetDefaultInputDevice() )->name << endl;
 
-
+    // Init opus encoder
     int opusErr;
 	encoder = opus_encoder_create(SAMPLE_RATE, CHANNELS, OPUS_APPLICATION_VOIP, &opusErr);
 	if (opusErr != OPUS_OK)
 		throw std::runtime_error(string("opus_encoder_create error: ") + opus_strerror(opusErr));
 
 
-    ifstream audio_file;
-    audio_file.open("packets.opus", ios::binary);
+    // ifstream audio_file;
+    // audio_file.open("packets.opus", ios::binary);
 
-    uint8_t sendMSG[25];
+    //uint8_t sendMSG[25];
 
     beginAudioStream(true, false);
 
@@ -127,16 +128,6 @@ int main()
         // }
         // cout << endl;
         // sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
-
-
-        // for(int i = 0; i < 20; i++)
-        // {
-        //     cout << (int)sendMSG[i] << " ";
-
-        // }
-        // cout << endl;
-        // sendto( sock, (char*)sendMSG, 20, 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
-
  
         
     }
