@@ -12,10 +12,8 @@
 #include <conio.h>
 #include <deque>
 #include <thread>
-#include "audio.cpp"
-
 #include <time.h>
-struct timeval timeout={2,0}; //set timeout for 2 seconds/* set receive UDP message timeout */
+#include "audio.cpp"
 
 
 #pragma comment(lib, "Ws2_32.lib")
@@ -39,6 +37,7 @@ uint8_t recvbuff[50];
 int recvbufflen = 50;
 SOCKET sock;
 
+struct timeval timeout={2,0}; //set timeout for 2 seconds/* set receive UDP message timeout */
 
 struct Packet
 {
@@ -54,8 +53,17 @@ PacketBuffer packetbuf;
 /* Wait to receive data and push to byte buffer */
 void byteToQueue()
 {
+    fd_set socks;
+    FD_ZERO(&socks);
+    FD_SET(sock, &socks);
+    int wait = select(sock+1, &socks, NULL, NULL, &timeout);
 
-    int ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
+    int ret;
+
+    if(wait)
+    {
+    ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
+    cout << "recvfrom: " << ret << endl;
 
     if (ret > 0) // If the ret returns -1 or 0, don't push anyting to the queue;
     {
@@ -68,6 +76,9 @@ void byteToQueue()
         //error message
     }
 
+    }else{
+        cout << "timeout" <<endl;
+    }
     
 }
 
@@ -179,14 +190,15 @@ int main()
 
     //  This option is needed on the socket in order to be able to receive broadcast messages
     //  If not set the receiver will not receive broadcast messages in the local network.
+    
     // SO_RECVTIME value to set a timeout for the socket
     // if ( setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) ) < 0 )
-    if (setsockopt( sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,sizeof(struct timeval)) < 0)
-    {
-        cout<<"Error in setting Broadcast option";
-        closesocket(sock);
-        return 0;
-    }
+    // if (setsockopt( sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,sizeof(struct timeval)) < 0)
+    // {
+    //     cout<<"Error in setting Broadcast option";
+    //     closesocket(sock);
+    //     return 0;
+    // }
 
     Recv_addr.sin_family       = AF_INET;
     Recv_addr.sin_port         = htons( MYPORT );

@@ -21,7 +21,7 @@ There are precompiled binaries for both broadcaster and receiver.
 
 **The following step is neccessary every time if you want to compile the code**
 
-5. Go to the start menu and search up "Developer Command Prompt for VS2022" or (if you install a new version of it VS202X) 
+5. Go to the start menu and search up "Developer Command Prompt for VS2022" 
 6. Use `cd [path]` in the terminal to your project folder.
 7. Use `code .` to open up VScode. 
 8. Open `broadcaster.cpp` and go to the menu ribbon and go to "Run" -> "Run without Debugging"
