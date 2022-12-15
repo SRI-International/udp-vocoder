@@ -13,12 +13,11 @@
 #include <fstream>
 #include "audio.cpp"
 
-
 using namespace std;
 
 #define MYPORT 9009     // the port users will be connecting to
 #define WRITE_FILE 0    // Change to 1 if you want to write the opus file (read and write can't be on the same time)
-#define READ_FILE 1     // Change to 1 if you want to read from opus file
+#define READ_FILE 0     // Change to 1 if you want to read from opus file
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -47,7 +46,7 @@ int main()
     }
 
     struct sockaddr_in Recv_addr;
-    struct sockaddr_in Sender_addr;
+    // struct sockaddr_in Sender_addr;
     int len = sizeof( struct sockaddr_in );
 
     Recv_addr.sin_family       = AF_INET;
@@ -62,9 +61,6 @@ int main()
 	if (paErr)
 		throw std::runtime_error(string("Could not start audio. Pa_Initialize error: ") + Pa_GetErrorText(paErr));
 
-
-    cout << "Sound in : " << Pa_GetDeviceInfo( Pa_GetDefaultInputDevice() )->name << endl;
-
     // Init opus encoder
     int opusErr;
 	encoder = opus_encoder_create(SAMPLE_RATE, CHANNELS, OPUS_APPLICATION_VOIP, &opusErr);
@@ -72,6 +68,7 @@ int main()
 		throw std::runtime_error(string("opus_encoder_create error: ") + opus_strerror(opusErr));
 
     beginAudioStream(true, false);
+    cout << "Sound in : " << Pa_GetDeviceInfo( Pa_GetDefaultInputDevice() )->name << endl;
 
 #if READ_FILE
 
@@ -121,6 +118,8 @@ int main()
 
             pack.datasize = enc;
 
+
+            
             cout << "size: " << int(pack.datasize) << " Packet: "; 
             for(int i = 0; i < pack.datasize ; i++)
             {
@@ -128,7 +127,7 @@ int main()
 
             }
             cout << endl;
-
+            
             sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
         }
     }

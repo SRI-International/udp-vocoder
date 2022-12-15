@@ -7,79 +7,44 @@
     Date: 11/30/2022
 */
 
-#include "winsock2.h"
-#include <iostream>
-#include <conio.h>
-#include <deque>
-#include <thread>
-#include <time.h>
-#include "audio.cpp"
 
-
+#include "receiver.h"
 #pragma comment(lib, "Ws2_32.lib")
-
-namespace std 
-{
-    typedef deque<uint8_t> ByteBuffer;
-}
-
 
 using namespace std;
 
-#define MYPORT 9009    // the port users will be connecting to
-
-/* Variables for socket*/
-ByteBuffer bytebuf;
-struct sockaddr_in Recv_addr;
-struct sockaddr_in Sender_addr;
-int len = sizeof( struct sockaddr_in );
-uint8_t recvbuff[50];
-int recvbufflen = 50;
-SOCKET sock;
-
-struct timeval timeout={2,0}; //set timeout for 2 seconds/* set receive UDP message timeout */
-
-struct Packet
-{
-	uint8_t datasize;
-	uint8_t data[20]; //AUDIO packet payload
-	
-};
-
-typedef deque<Packet> PacketBuffer;
-PacketBuffer packetbuf;
-
+// TODO: Check for memory leaks 
 
 /* Wait to receive data and push to byte buffer */
 void byteToQueue()
 {
-    fd_set socks;
-    FD_ZERO(&socks);
-    FD_SET(sock, &socks);
-    int wait = select(sock+1, &socks, NULL, NULL, &timeout);
+    // set up for select() to wait for nothing and if there is nothing, timeout
+    cout << "byteToQueue thread id: " << this_thread::get_id() << endl;
 
-    int ret;
-
-    if(wait)
+    while(1)
     {
-    ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
-    cout << "recvfrom: " << ret << endl;
-
-    if (ret > 0) // If the ret returns -1 or 0, don't push anyting to the queue;
-    {
-        for(int i = 0; i < ret; i++)
-        {
-            bytebuf.push_back(recvbuff[i]);
-        }
-    }else
-    {
-        //error message
-    }
-
-    }else{
-        cout << "timeout" <<endl;
-    }
+        fd_set socks;
+        FD_ZERO(&socks);
+        FD_SET(sock, &socks);
     
+        if(select(sock+1, &socks, NULL, NULL, &timeout)) 
+        {
+            int ret = recvfrom( sock, (char*)&recvbuff, recvbufflen, 0, (sockaddr*) &Sender_addr, &len );
+
+            for(int i = 0; i < ret; i++)
+            {
+                bytebuf.push_back(recvbuff[i]);
+            }
+            if(queueEmpty)
+            {
+                queueEmpty = false;
+                unpause();
+            }     
+            
+        }else{
+            cout << "timeout on UDP" <<endl;
+        }
+    }
 }
 
 /* 
@@ -97,10 +62,10 @@ void packetMaker()
 
     while(1)
 	{
-        if (bytebuf.size() < 2){    // would make a new thread every time, make a timeout
-            thread p(byteToQueue);
-            p.join();
-            continue;
+        if (bytebuf.size() < 2)
+        {
+            queueEmpty = true;
+            waitForUDP();
         }
 
 		uint8_t last = bytebuf.front();
@@ -129,7 +94,7 @@ void packetMaker()
 			datacount++;
 
             // packet completed
-			if (datacount == size) { return; } 
+			if (datacount == size) { return;} 
 		}
 	}
 
@@ -137,7 +102,6 @@ void packetMaker()
 
 
 /* Decode audio from queue and play it */
-
 void playRecvAudio()
 {
     opus_int16 decoded[PACKET_SAMPLES];
@@ -184,21 +148,8 @@ int main()
     WSADATA wsaData;
     WSAStartup( MAKEWORD( 2, 2 ), &wsaData );
     
-    sock = socket( AF_INET, SOCK_DGRAM, 0 );
-    
+    sock = socket( AF_INET, SOCK_DGRAM, 0 );    
     char broadcast = '1';
-
-    //  This option is needed on the socket in order to be able to receive broadcast messages
-    //  If not set the receiver will not receive broadcast messages in the local network.
-    
-    // SO_RECVTIME value to set a timeout for the socket
-    // if ( setsockopt( sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof( broadcast ) ) < 0 )
-    // if (setsockopt( sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout,sizeof(struct timeval)) < 0)
-    // {
-    //     cout<<"Error in setting Broadcast option";
-    //     closesocket(sock);
-    //     return 0;
-    // }
 
     Recv_addr.sin_family       = AF_INET;
     Recv_addr.sin_port         = htons( MYPORT );
@@ -233,7 +184,16 @@ int main()
 
     beginAudioStream(false, true);
 
+    cout << "Main thread id: " << this_thread::get_id() << endl;
+   
+   // create an independent thread to receive bytes
+    thread p(byteToQueue);
+    p.detach();
     
+    chrono::seconds dura(2);
+    this_thread::sleep_for(dura);
+    cout<< "waited 2 sec" << endl;
+
     do
     {
         packetMaker();
