@@ -67,13 +67,44 @@ int main()
 	if (opusErr != OPUS_OK)
 		throw std::runtime_error(string("opus_encoder_create error: ") + opus_strerror(opusErr));
 
+    opusErr = opus_encoder_ctl(encoder, OPUS_SET_BITRATE(8000));
+	if (opusErr != OPUS_OK) {
+		throw std::runtime_error(string("opus set bitrate error: ") + opus_strerror(opusErr));
+	}
+
+    opusErr = opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(0));
+	if (opusErr != OPUS_OK) {
+		throw std::runtime_error(string("opus set complexity error: ") + opus_strerror(opusErr));
+	}
+
+    opusErr = opus_encoder_ctl(encoder, OPUS_SET_MAX_BANDWIDTH(OPUS_BANDWIDTH_WIDEBAND));
+	if (opusErr != OPUS_OK) {
+		throw std::runtime_error(string("opus set max bandwidth error: ") + opus_strerror(opusErr));
+	}
+
+    opusErr = opus_encoder_ctl(encoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
+	if (opusErr != OPUS_OK) {
+		throw std::runtime_error(string("opus set signal error: ") + opus_strerror(opusErr));
+	}
+
     beginAudioStream(true, false);
     cout << "Sound in : " << Pa_GetDeviceInfo( Pa_GetDefaultInputDevice() )->name << endl;
 
-#if READ_FILE
+#if WRITE_FILE
+    char output[50];
+    cout << "File name to write to: " << endl;
+    cin >> output;
+    ofstream rec_file;
+    
+#endif
 
+#if READ_FILE
+    char input[50];
+    cout << "File name to read from: " << endl;
+    cin >> input;
     ifstream audio_file;
-    audio_file.open("packets.opus", ios::binary);
+
+    audio_file.open(input, ios::binary);
     uint8_t sendMSG[25];
        
     while(audio_file)
@@ -81,10 +112,6 @@ int main()
         Packet pack;
         audio_file.read((char*)&pack.datasize, 1);
         audio_file.read((char*)pack.data, pack.datasize);
-
-
-        cout << "sending message: "; 
-        //audio_file.read((char*)sendMSG, 20);
 
         cout << "size: " << int(pack.datasize) << " Packet: "; 
         for(int i = 0; i < pack.datasize ; i++)
@@ -117,16 +144,21 @@ int main()
 		    	throw std::runtime_error(string("opus_encode error: ") + opus_strerror(enc));
 
             pack.datasize = enc;
-
-
-            
             cout << "size: " << int(pack.datasize) << " Packet: "; 
             for(int i = 0; i < pack.datasize ; i++)
             {
                 cout << (int)pack.data[i] << " ";
-
             }
             cout << endl;
+
+#if WRITE_FILE
+            rec_file.open(output, ios::app | ios::binary);
+            rec_file.write((char*)&pack.datasize, sizeof(pack.datasize));
+            rec_file.write((char*)pack.data, enc);
+            rec_file.close();
+
+#endif
+                  
             
             sendto( sock, (char*)&pack, int(pack.datasize + 1) , 0,(sockaddr*) &Recv_addr, sizeof( Recv_addr ) );
         }
